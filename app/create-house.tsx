@@ -9,6 +9,7 @@ import { usePremium } from '@/contexts/PremiumContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { logError, logInfo, logWarning, formatSupabaseError } from '@/lib/errorReporting';
 import HouseLimitModal from '@/components/HouseLimitModal';
+import Emoji3D from '@/components/Emoji3D';
 
 type EmojiPack = {
   id: string;
@@ -261,7 +262,7 @@ export default function CreateHouseScreen() {
                 >
                   <View style={styles.previewHeader}>
                     <View style={styles.previewTitleRow}>
-                      <Text style={styles.previewEmoji}>{selectedEmoji}</Text>
+                      <Emoji3D emoji={selectedEmoji} size="xlarge" />
                       <Text style={styles.previewName}>{houseName || 'Your House Name'}</Text>
                     </View>
                     <View style={styles.previewAdminBadge}>
@@ -336,7 +337,7 @@ export default function CreateHouseScreen() {
                         <Lock size={16} color="#FFFFFF" />
                       </View>
                     )}
-                    <Text style={[styles.packEmoji, !canAccess && styles.packEmojiLocked]}>{pack.preview_emoji}</Text>
+                    <Emoji3D emoji={pack.preview_emoji} size="large" style={!canAccess ? { opacity: 0.5 } : undefined} />
                     <Text style={[styles.packName, !canAccess && styles.packNameLocked]}>{pack.name}</Text>
                     <Text style={[styles.packPrice, !canAccess && styles.packPriceLocked]}>
                       {pack.is_free ? 'Free' : 'Premium'}
@@ -360,7 +361,7 @@ export default function CreateHouseScreen() {
                     ]}
                     onPress={() => setSelectedEmoji(emoji)}
                   >
-                    <Text style={styles.emojiText}>{emoji}</Text>
+                    <Emoji3D emoji={emoji} size="large" />
                   </Pressable>
                 ))}
               </View>
@@ -466,9 +467,6 @@ const styles = StyleSheet.create({
     gap: 12,
     flex: 1,
   },
-  previewEmoji: {
-    fontSize: 32,
-  },
   previewName: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -514,10 +512,6 @@ const styles = StyleSheet.create({
   packCardSelected: {
     borderColor: '#10B981',
     backgroundColor: '#065F46',
-  },
-  packEmoji: {
-    fontSize: 32,
-    marginBottom: 8,
   },
   packName: {
     fontSize: 12,
@@ -574,9 +568,6 @@ const styles = StyleSheet.create({
   emojiButtonSelected: {
     borderColor: '#10B981',
     backgroundColor: '#065F46',
-  },
-  emojiText: {
-    fontSize: 28,
   },
   inputContainer: {
     gap: 8,

@@ -1,6 +1,7 @@
 import { View, TextInput, StyleSheet, Pressable, Modal, TextInputProps, Text, ScrollView, Platform } from 'react-native';
 import { useState } from 'react';
 import { Smile, X } from 'lucide-react-native';
+import Emoji3D from './Emoji3D';
 
 interface EmojiTextInputProps extends TextInputProps {
   value: string;
@@ -69,7 +70,7 @@ export default function EmojiTextInput({ value, onChangeText, style, ...props }:
                     style={styles.emojiItem}
                     onPress={() => handleEmojiSelect(emoji)}
                   >
-                    <Text style={styles.emojiText}>{emoji}</Text>
+                    <Emoji3D emoji={emoji} size="large" />
                   </Pressable>
                 ))}
               </View>
@@ -144,9 +145,5 @@ const styles = StyleSheet.create({
     margin: 4,
     backgroundColor: '#0F172A',
     borderRadius: 8,
-  },
-  emojiText: {
-    fontSize: 28,
-    textAlign: 'center',
   },
 });

@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Users } from 'lucide-react-native';
 import BannerRenderer from './BannerRenderer';
 import { safeArrayFromColors, getContrastTextColor, isLightGradient } from '@/lib/colorUtils';
+import Emoji3D from './Emoji3D';
 
 type HouseCardProps = {
   house: {
@@ -59,7 +60,7 @@ export default function HouseCard({
       <View style={styles.houseHeader}>
         <View style={styles.houseTitleRow}>
           {house.house_emoji && (
-            <Text style={styles.houseEmoji}>{house.house_emoji}</Text>
+            <Emoji3D emoji={house.house_emoji} size="large" />
           )}
           <Text style={[styles.houseName, { color: textColor }]} numberOfLines={1}>
             {house.name}
@@ -163,9 +164,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     flex: 1,
-  },
-  houseEmoji: {
-    fontSize: 28,
   },
   houseName: {
     fontSize: 20,
