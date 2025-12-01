@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Plus, Minus } from 'lucide-react-native';
+import { LongPressButton } from './LongPressButton';
 
 type ScoreInputAccuracySimpleProps = {
   initialHits?: number;
@@ -41,13 +42,15 @@ export function ScoreInputAccuracySimple({
       <Text style={styles.label}>Tap + for each successful hit</Text>
 
       <View style={styles.counterContainer}>
-        <Pressable
+        <LongPressButton
           style={[styles.button, styles.minusButton, hits === 0 && styles.buttonDisabled]}
           onPress={handleDecrement}
           disabled={hits === 0}
+          delayBeforeRepeat={400}
+          accelerationFactor={0.88}
         >
           <Minus size={20} color={hits === 0 ? '#64748B' : '#EF4444'} />
-        </Pressable>
+        </LongPressButton>
 
         <View style={styles.scoreDisplay}>
           <Text style={styles.hitsValue}>{hits}</Text>
@@ -55,13 +58,15 @@ export function ScoreInputAccuracySimple({
           <Text style={styles.attemptsValue}>{maxAttempts}</Text>
         </View>
 
-        <Pressable
+        <LongPressButton
           style={[styles.button, styles.plusButton, isMaxed && styles.buttonDisabled]}
           onPress={handleIncrement}
           disabled={isMaxed}
+          delayBeforeRepeat={400}
+          accelerationFactor={0.88}
         >
           <Plus size={20} color={isMaxed ? '#64748B' : '#10B981'} />
-        </Pressable>
+        </LongPressButton>
       </View>
 
       <View style={styles.resultContainer}>
