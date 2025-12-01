@@ -7,7 +7,6 @@ import { ArrowLeft, Trophy, Users, Calendar, Medal, Crown } from 'lucide-react-n
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/UserAvatar';
-import Emoji3D from '@/components/Emoji3D';
 
 type Participant = {
   user_id: string;
@@ -220,7 +219,7 @@ export default function HouseHistoryScreen() {
         <View style={styles.sessionHeader}>
           <View style={styles.gameInfo}>
             {item.game_emoji && (
-              <Emoji3D emoji={item.game_emoji} size="medium" />
+              <Text style={styles.gameEmoji}>{item.game_emoji}</Text>
             )}
             <View style={styles.gameTitleContainer}>
               <Text style={styles.gameName}>{item.game_name}</Text>

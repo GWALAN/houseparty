@@ -8,7 +8,6 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/UserAvatar';
 import { formatScore, getScoringTypeConfig, type ScoringType } from '@/constants/ScoringTypes';
-import Emoji3D from '@/components/Emoji3D';
 
 type House = {
   id: string;
@@ -300,7 +299,7 @@ export default function LeaderboardScreen() {
       <View style={styles.gameCard}>
         <View style={styles.gameHeader}>
           <View style={styles.gameHeaderLeft}>
-            <Emoji3D emoji={item.game_emoji || '🎮'} size="medium" />
+            <Text style={styles.gameEmoji}>{item.game_emoji || '🎮'}</Text>
             <View style={styles.gameHeaderInfo}>
               <Text style={styles.gameName}>{item.game_name}</Text>
               <View style={styles.timeRow}>
@@ -310,7 +309,7 @@ export default function LeaderboardScreen() {
             </View>
           </View>
           <View style={styles.scoringTypeTag}>
-            <Emoji3D emoji={scoringConfig.emoji} size="small" />
+            <Text style={styles.scoringTypeEmoji}>{scoringConfig.emoji}</Text>
             <Text style={styles.scoringTypeLabel}>{scoringConfig.unit}</Text>
           </View>
         </View>
@@ -403,7 +402,7 @@ export default function LeaderboardScreen() {
     return (
       <Pressable style={styles.houseSelectorButton} onPress={() => setShowHouseModal(true)}>
         <View style={styles.houseSelectorContent}>
-          <Emoji3D emoji={selectedHouse.house_emoji} size="large" />
+          <Text style={styles.houseEmoji}>{selectedHouse.house_emoji}</Text>
           <View style={styles.houseInfo}>
             <Text style={styles.houseName}>{selectedHouse.name}</Text>
             <View style={styles.houseMetaRow}>
@@ -446,7 +445,7 @@ export default function LeaderboardScreen() {
                 setShowHouseModal(false);
               }}
             >
-              <Emoji3D emoji={house.house_emoji} size="large" />
+              <Text style={styles.houseModalEmoji}>{house.house_emoji}</Text>
               <Text style={styles.houseModalName}>{house.name}</Text>
               {selectedHouseId === house.id && (
                 <View style={styles.selectedIndicator} />

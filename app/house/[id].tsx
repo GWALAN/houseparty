@@ -10,7 +10,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import HouseLimitModal from '@/components/HouseLimitModal';
 import { safeArrayFromColors, isLightGradient } from '@/lib/colorUtils';
 import { useQueryClient } from '@tanstack/react-query';
-import Emoji3D from '@/components/Emoji3D';
 
 type Game = {
   id: string;
@@ -1046,7 +1045,7 @@ export default function HouseDetailScreen() {
       >
         <View style={styles.gameInfo}>
           <View style={styles.sessionHeader}>
-            <Emoji3D emoji={item.games?.game_emoji || '🎮'} size="medium" />
+            <Text style={styles.sessionEmoji}>{item.games?.game_emoji || '🎮'}</Text>
             <View style={styles.sessionInfo}>
               <Text style={styles.gameName}>{item.games?.name}</Text>
               <Text style={styles.sessionStatus}>

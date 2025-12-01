@@ -9,7 +9,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SCORING_TYPES, ScoringType, getScoringTypeConfig } from '@/constants/ScoringTypes';
 import { DistanceUnit, WeightUnit } from '@/lib/unitConversions';
 import { LongPressButton } from '@/components/LongPressButton';
-import Emoji3D from '@/components/Emoji3D';
 
 export default function AddGameScreen() {
   const { houseId } = useLocalSearchParams();
@@ -126,7 +125,7 @@ export default function AddGameScreen() {
                 onPress={() => setScoringType(type.id)}
                 disabled={loading}
               >
-                <Emoji3D emoji={type.emoji} size="large" />
+                <Text style={styles.scoringEmoji}>{type.emoji}</Text>
                 <Text style={[
                   styles.scoringLabel,
                   scoringType === type.id && styles.scoringLabelSelected

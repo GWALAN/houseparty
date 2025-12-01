@@ -13,7 +13,6 @@ import WinnerCelebrationModal from '@/components/WinnerCelebrationModal';
 import KitUnlockCelebration from '@/components/KitUnlockCelebration';
 import { getScoringTypeConfig, determineWinner, formatScore, type ScoringType } from '@/constants/ScoringTypes';
 import { ScoreInputTimer } from '@/components/ScoreInputTimer';
-import Emoji3D from '@/components/Emoji3D';
 import { ScoreInputQuickTally } from '@/components/ScoreInputQuickTally';
 import { ScoreInputMeasurement } from '@/components/ScoreInputMeasurement';
 import { ScoreInputAccuracy } from '@/components/ScoreInputAccuracy';
@@ -166,7 +165,7 @@ function PlayerCard({ player, scoringType, scoringUnit, distanceUnit, weightUnit
       <View style={styles.playerHeader}>
         <Text style={styles.playerName}>{player.nickname}</Text>
         <View style={styles.scoringTypeIndicator}>
-          <Emoji3D emoji={scoringConfig.emoji} size="medium" />
+          <Text style={styles.scoringEmoji}>{scoringConfig.emoji}</Text>
           <Text style={styles.scoringLabel}>{displayUnit}</Text>
         </View>
       </View>
