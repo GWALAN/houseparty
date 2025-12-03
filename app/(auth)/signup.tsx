@@ -13,7 +13,6 @@ export default function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const { signUp } = useAuth();
   const router = useRouter();
 
@@ -37,7 +36,6 @@ export default function SignUpScreen() {
 
     setLoading(true);
     setError('');
-    setSuccess('');
 
     // Check if username already exists
     const { data: existingUser } = await supabase
@@ -79,10 +77,9 @@ export default function SignUpScreen() {
         setError(`Unable to create account: ${error.message}`);
       }
     } else {
-      setSuccess('Account created! Please check your email to verify your account before signing in.');
-      setTimeout(() => {
-        router.push('/(auth)/signin');
-      }, 4000);
+      console.log('[SIGNUP] Account created successfully, auth state will handle navigation');
+      // Don't manually redirect - let the auth state handle it
+      // The user is auto-signed in and will be redirected to onboarding automatically
     }
   };
 
@@ -100,7 +97,6 @@ export default function SignUpScreen() {
         <Text style={styles.subtitle}>Join the party</Text>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        {success ? <Text style={styles.success}>{success}</Text> : null}
 
         <View style={styles.form}>
           <TextInput
@@ -195,13 +191,6 @@ const styles = StyleSheet.create({
   },
   error: {
     backgroundColor: '#DC2626',
-    color: '#FFFFFF',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  success: {
-    backgroundColor: '#10B981',
     color: '#FFFFFF',
     padding: 12,
     borderRadius: 8,
