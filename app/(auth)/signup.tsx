@@ -77,9 +77,12 @@ export default function SignUpScreen() {
         setError(`Unable to create account: ${error.message}`);
       }
     } else {
-      console.log('[SIGNUP] Account created successfully, auth state will handle navigation');
-      // Don't manually redirect - let the auth state handle it
-      // The user is auto-signed in and will be redirected to onboarding automatically
+      console.log('[SIGNUP] Account created successfully, waiting for auth state to update');
+      // Give the auth state a moment to update, then redirect
+      setTimeout(() => {
+        console.log('[SIGNUP] Redirecting to check onboarding status');
+        router.replace('/');
+      }, 500);
     }
   };
 

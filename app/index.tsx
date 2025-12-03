@@ -12,12 +12,16 @@ export default function Index() {
   const [checkingOnboarding, setCheckingOnboarding] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading) {
+      console.log('[INDEX] Auth still loading...');
+      return;
+    }
 
-    console.log('[INDEX] Auth loaded, session:', !!session);
+    console.log('[INDEX] Auth loaded, session:', !!session, 'user:', !!user);
 
     const checkOnboarding = async () => {
       if (session && user) {
+        console.log('[INDEX] User authenticated, checking onboarding status for user:', user.id);
         setCheckingOnboarding(true);
         try {
           const { data, error } = await supabase
@@ -26,7 +30,11 @@ export default function Index() {
             .eq('user_id', user.id)
             .maybeSingle();
 
-          console.log('[INDEX] Onboarding check result:', { data, error });
+          console.log('[INDEX] Onboarding check result:', {
+            data,
+            error,
+            hasCompleted: data?.has_completed_onboarding
+          });
 
           if (error) {
             console.error('[INDEX] Error checking onboarding:', error);
@@ -35,7 +43,7 @@ export default function Index() {
             console.log('[INDEX] No profile settings found, needs onboarding');
             router.replace('/(auth)/onboarding');
           } else if (data.has_completed_onboarding === false) {
-            console.log('[INDEX] User needs onboarding (flag is false)');
+            console.log('[INDEX] User needs onboarding (flag is false), redirecting to onboarding');
             router.replace('/(auth)/onboarding');
           } else {
             console.log('[INDEX] User logged in and onboarded, redirecting to tabs');
