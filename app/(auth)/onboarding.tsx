@@ -1,9 +1,22 @@
 import { View, Text, StyleSheet, Pressable, Dimensions, Platform } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Home, Users, Trophy, Sparkles } from 'lucide-react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  withSpring,
+  Easing,
+  FadeIn,
+  FadeOut,
+  SlideInRight,
+  SlideOutLeft,
+} from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -43,14 +56,146 @@ const STEPS: OnboardingStep[] = [
   },
 ];
 
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+
+function AnimatedIcon({ Icon, color }: { Icon: any; color: string }) {
+  const bounceAnimation = useSharedValue(0);
+  const rotateAnimation = useSharedValue(0);
+
+  useEffect(() => {
+    bounceAnimation.value = withRepeat(
+      withSequence(
+        withTiming(-10, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+
+    rotateAnimation.value = withRepeat(
+      withSequence(
+        withTiming(5, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(-5, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: bounceAnimation.value },
+      { rotate: `${rotateAnimation.value}deg` },
+    ],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <AnimatedLinearGradient
+        colors={[color, color + 'CC']}
+        style={styles.iconGradient}
+        entering={FadeIn.duration(600).delay(200)}
+      >
+        <Icon size={64} color="#FFFFFF" strokeWidth={2} />
+      </AnimatedLinearGradient>
+    </Animated.View>
+  );
+}
+
+function PulsingButton({
+  onPress,
+  disabled,
+  color,
+  text
+}: {
+  onPress: () => void;
+  disabled: boolean;
+  color: string;
+  text: string;
+}) {
+  const pulseAnimation = useSharedValue(1);
+
+  useEffect(() => {
+    pulseAnimation.value = withRepeat(
+      withSequence(
+        withTiming(1.05, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: disabled ? 1 : pulseAnimation.value }],
+  }));
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={[styles.nextButton, disabled && styles.nextButtonDisabled]}
+    >
+      <Animated.View style={animatedStyle}>
+        <LinearGradient
+          colors={[color, color + 'CC']}
+          style={styles.nextGradient}
+        >
+          <Text style={styles.nextText}>{text}</Text>
+        </LinearGradient>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+function AnimatedDot({
+  isActive,
+  color,
+  index
+}: {
+  isActive: boolean;
+  color: string;
+  index: number;
+}) {
+  const scaleAnimation = useSharedValue(isActive ? 1 : 0.8);
+
+  useEffect(() => {
+    scaleAnimation.value = withSpring(isActive ? 1 : 0.8, {
+      damping: 10,
+      stiffness: 100,
+    });
+  }, [isActive]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scaleAnimation.value }],
+  }));
+
+  return (
+    <Animated.View
+      entering={FadeIn.delay(index * 100)}
+      style={[
+        styles.dot,
+        isActive && styles.activeDot,
+        { backgroundColor: isActive ? color : '#475569' },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
 export default function OnboardingScreen() {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const router = useRouter();
+  const slideAnimation = useSharedValue(0);
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
+      slideAnimation.value = withTiming(1, { duration: 300 }, () => {
+        slideAnimation.value = 0;
+      });
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -93,55 +238,59 @@ export default function OnboardingScreen() {
         colors={['#0F172A', '#1E293B']}
         style={styles.gradient}
       >
-        <View style={styles.content}>
+        <Animated.View
+          key={currentStep}
+          entering={SlideInRight.duration(400)}
+          exiting={SlideOutLeft.duration(400)}
+          style={styles.content}
+        >
           <View style={styles.iconContainer}>
-            <LinearGradient
-              colors={[step.color, step.color + 'CC']}
-              style={styles.iconGradient}
-            >
-              <Icon size={64} color="#FFFFFF" strokeWidth={2} />
-            </LinearGradient>
+            <AnimatedIcon Icon={Icon} color={step.color} />
           </View>
 
-          <Text style={styles.title}>{step.title}</Text>
-          <Text style={styles.description}>{step.description}</Text>
+          <Animated.Text
+            entering={FadeIn.duration(600).delay(300)}
+            style={styles.title}
+          >
+            {step.title}
+          </Animated.Text>
+
+          <Animated.Text
+            entering={FadeIn.duration(600).delay(400)}
+            style={styles.description}
+          >
+            {step.description}
+          </Animated.Text>
 
           <View style={styles.dotsContainer}>
             {STEPS.map((_, index) => (
-              <View
+              <AnimatedDot
                 key={index}
-                style={[
-                  styles.dot,
-                  index === currentStep && styles.activeDot,
-                  { backgroundColor: index === currentStep ? step.color : '#475569' }
-                ]}
+                isActive={index === currentStep}
+                color={step.color}
+                index={index}
               />
             ))}
           </View>
-        </View>
+        </Animated.View>
 
-        <View style={styles.footer}>
+        <Animated.View
+          entering={FadeIn.duration(600).delay(600)}
+          style={styles.footer}
+        >
           {!isLastStep && (
             <Pressable onPress={handleSkip} style={styles.skipButton}>
               <Text style={styles.skipText}>Skip</Text>
             </Pressable>
           )}
 
-          <Pressable
+          <PulsingButton
             onPress={handleNext}
             disabled={loading}
-            style={[styles.nextButton, loading && styles.nextButtonDisabled]}
-          >
-            <LinearGradient
-              colors={[step.color, step.color + 'CC']}
-              style={styles.nextGradient}
-            >
-              <Text style={styles.nextText}>
-                {isLastStep ? 'Get Started' : 'Next'}
-              </Text>
-            </LinearGradient>
-          </Pressable>
-        </View>
+            color={step.color}
+            text={isLastStep ? 'Get Started' : 'Next'}
+          />
+        </Animated.View>
       </LinearGradient>
     </SafeAreaView>
   );
