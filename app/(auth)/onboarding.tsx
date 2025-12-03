@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 
 type OnboardingStep = {
   icon: any;
@@ -61,29 +62,35 @@ const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 function AnimatedIcon({ Icon, color }: { Icon: any; color: string }) {
   const bounceAnimation = useSharedValue(0);
   const rotateAnimation = useSharedValue(0);
+  const opacityAnimation = useSharedValue(0);
 
   useEffect(() => {
-    bounceAnimation.value = withRepeat(
-      withSequence(
-        withTiming(-10, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 1000, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    );
+    opacityAnimation.value = withTiming(1, { duration: 600 });
 
-    rotateAnimation.value = withRepeat(
-      withSequence(
-        withTiming(5, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(-5, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 1500, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    );
+    if (!isWeb) {
+      bounceAnimation.value = withRepeat(
+        withSequence(
+          withTiming(-10, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        false
+      );
+
+      rotateAnimation.value = withRepeat(
+        withSequence(
+          withTiming(5, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+          withTiming(-5, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        false
+      );
+    }
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacityAnimation.value,
     transform: [
       { translateY: bounceAnimation.value },
       { rotate: `${rotateAnimation.value}deg` },
@@ -92,13 +99,12 @@ function AnimatedIcon({ Icon, color }: { Icon: any; color: string }) {
 
   return (
     <Animated.View style={animatedStyle}>
-      <AnimatedLinearGradient
+      <LinearGradient
         colors={[color, color + 'CC']}
         style={styles.iconGradient}
-        entering={FadeIn.duration(600).delay(200)}
       >
         <Icon size={64} color="#FFFFFF" strokeWidth={2} />
-      </AnimatedLinearGradient>
+      </LinearGradient>
     </Animated.View>
   );
 }
@@ -117,15 +123,17 @@ function PulsingButton({
   const pulseAnimation = useSharedValue(1);
 
   useEffect(() => {
-    pulseAnimation.value = withRepeat(
-      withSequence(
-        withTiming(1.05, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    );
-  }, []);
+    if (!isWeb && !disabled) {
+      pulseAnimation.value = withRepeat(
+        withSequence(
+          withTiming(1.05, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        false
+      );
+    }
+  }, [disabled]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: disabled ? 1 : pulseAnimation.value }],
@@ -159,6 +167,14 @@ function AnimatedDot({
   index: number;
 }) {
   const scaleAnimation = useSharedValue(isActive ? 1 : 0.8);
+  const opacityAnimation = useSharedValue(0);
+
+  useEffect(() => {
+    opacityAnimation.value = withTiming(1, {
+      duration: 300,
+      delay: index * 100
+    });
+  }, []);
 
   useEffect(() => {
     scaleAnimation.value = withSpring(isActive ? 1 : 0.8, {
@@ -168,12 +184,12 @@ function AnimatedDot({
   }, [isActive]);
 
   const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacityAnimation.value,
     transform: [{ scale: scaleAnimation.value }],
   }));
 
   return (
     <Animated.View
-      entering={FadeIn.delay(index * 100)}
       style={[
         styles.dot,
         isActive && styles.activeDot,
@@ -184,18 +200,77 @@ function AnimatedDot({
   );
 }
 
+function AnimatedContent({
+  step,
+  currentStep
+}: {
+  step: OnboardingStep;
+  currentStep: number;
+}) {
+  const Icon = step.icon;
+  const fadeAnimation = useSharedValue(0);
+  const slideAnimation = useSharedValue(50);
+
+  useEffect(() => {
+    fadeAnimation.value = 0;
+    slideAnimation.value = 50;
+
+    fadeAnimation.value = withTiming(1, { duration: 400 });
+    slideAnimation.value = withTiming(0, {
+      duration: 400,
+      easing: Easing.out(Easing.ease)
+    });
+  }, [currentStep]);
+
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: fadeAnimation.value,
+    transform: [{ translateX: slideAnimation.value }],
+  }));
+
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: fadeAnimation.value,
+  }));
+
+  const descriptionStyle = useAnimatedStyle(() => ({
+    opacity: fadeAnimation.value,
+  }));
+
+  return (
+    <Animated.View style={[styles.contentInner, contentStyle]}>
+      <View style={styles.iconContainer}>
+        <AnimatedIcon Icon={Icon} color={step.color} />
+      </View>
+
+      <Animated.Text style={[styles.title, titleStyle]}>
+        {step.title}
+      </Animated.Text>
+
+      <Animated.Text style={[styles.description, descriptionStyle]}>
+        {step.description}
+      </Animated.Text>
+
+      <View style={styles.dotsContainer}>
+        {STEPS.map((_, index) => (
+          <AnimatedDot
+            key={index}
+            isActive={index === currentStep}
+            color={step.color}
+            index={index}
+          />
+        ))}
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function OnboardingScreen() {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const router = useRouter();
-  const slideAnimation = useSharedValue(0);
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
-      slideAnimation.value = withTiming(1, { duration: 300 }, () => {
-        slideAnimation.value = 0;
-      });
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -229,7 +304,6 @@ export default function OnboardingScreen() {
   };
 
   const step = STEPS[currentStep];
-  const Icon = step.icon;
   const isLastStep = currentStep === STEPS.length - 1;
 
   return (
@@ -238,46 +312,11 @@ export default function OnboardingScreen() {
         colors={['#0F172A', '#1E293B']}
         style={styles.gradient}
       >
-        <Animated.View
-          key={currentStep}
-          entering={SlideInRight.duration(400)}
-          exiting={SlideOutLeft.duration(400)}
-          style={styles.content}
-        >
-          <View style={styles.iconContainer}>
-            <AnimatedIcon Icon={Icon} color={step.color} />
-          </View>
+        <View style={styles.content}>
+          <AnimatedContent step={step} currentStep={currentStep} />
+        </View>
 
-          <Animated.Text
-            entering={FadeIn.duration(600).delay(300)}
-            style={styles.title}
-          >
-            {step.title}
-          </Animated.Text>
-
-          <Animated.Text
-            entering={FadeIn.duration(600).delay(400)}
-            style={styles.description}
-          >
-            {step.description}
-          </Animated.Text>
-
-          <View style={styles.dotsContainer}>
-            {STEPS.map((_, index) => (
-              <AnimatedDot
-                key={index}
-                isActive={index === currentStep}
-                color={step.color}
-                index={index}
-              />
-            ))}
-          </View>
-        </Animated.View>
-
-        <Animated.View
-          entering={FadeIn.duration(600).delay(600)}
-          style={styles.footer}
-        >
+        <View style={styles.footer}>
           {!isLastStep && (
             <Pressable onPress={handleSkip} style={styles.skipButton}>
               <Text style={styles.skipText}>Skip</Text>
@@ -290,7 +329,7 @@ export default function OnboardingScreen() {
             color={step.color}
             text={isLastStep ? 'Get Started' : 'Next'}
           />
-        </Animated.View>
+        </View>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -305,10 +344,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    paddingHorizontal: 32,
+    paddingBottom: Platform.OS === 'android' ? 100 : 40,
+  },
+  contentInner: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: typeof Platform !== 'undefined' && Platform.OS === 'android' ? 100 : 40,
   },
   iconContainer: {
     marginBottom: 48,
