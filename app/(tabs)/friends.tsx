@@ -407,50 +407,6 @@ export default function FriendsScreen() {
     }
   };
 
-  const fetchBlockedUsers = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('blocked_users')
-        .select(`
-          id,
-          blocked_id,
-          created_at,
-          profiles!blocked_users_blocked_id_fkey(
-            username,
-            avatar_url
-          )
-        `)
-        .eq('blocker_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        const blockedWithSettings = await Promise.all(
-          data.map(async (b: any) => {
-            const { data: settings } = await supabase
-              .from('user_profile_settings')
-              .select('display_name')
-              .eq('user_id', b.blocked_id)
-              .maybeSingle();
-
-            return {
-              id: b.id,
-              blocked_id: b.blocked_id,
-              username: b.profiles?.username || 'Unknown',
-              display_name: settings?.display_name || b.profiles?.username || 'Unknown',
-              avatar_url: b.profiles?.avatar_url || null,
-              created_at: b.created_at,
-            };
-          })
-        );
-        setBlockedUsers(blockedWithSettings);
-      }
-    } catch (error) {
-      console.error('[FRIENDS] Error fetching blocked users:', error);
-    }
-  };
-
   const searchUsers = async (query: string) => {
     if (!user || query.trim().length < 1) {
       setSearchResults([]);
@@ -713,123 +669,6 @@ export default function FriendsScreen() {
     }
   };
 
-  const blockUser = async (userId: string, displayName: string) => {
-    if (!user) return;
-
-    if (Platform.OS === 'web') {
-      if (!confirm(`Are you sure you want to block ${displayName}? They will be removed from your friends list and won't be able to send you friend requests.`)) return;
-    } else {
-      Alert.alert(
-        'Block User',
-        `Are you sure you want to block ${displayName}? They will be removed from your friends list and won't be able to send you friend requests.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Block',
-            style: 'destructive',
-            onPress: async () => {
-              await performBlockUser(userId, displayName);
-            },
-          },
-        ]
-      );
-      return;
-    }
-
-    await performBlockUser(userId, displayName);
-  };
-
-  const performBlockUser = async (userId: string, displayName: string) => {
-    if (!user) return;
-
-    try {
-      console.log('[FRIENDS] Blocking user:', userId);
-
-      setFriends(prevFriends => prevFriends.filter(f => f.friend_id !== userId));
-
-      const { error } = await supabase.rpc('block_user', {
-        blocked_user_id: userId
-      });
-
-      if (error) {
-        console.error('[FRIENDS] Block error:', error);
-        showError('Failed to block user. Please try again.');
-        await fetchFriends();
-      } else {
-        console.log('[FRIENDS] User blocked successfully');
-        showInfo(`${displayName} has been blocked`);
-
-        if (selectedUser?.id === userId) {
-          setSelectedUser(null);
-        }
-
-        await Promise.all([
-          fetchPendingRequests(),
-          fetchSentRequests()
-        ]);
-
-        setSearchResults(prev => prev.filter(u => u.id !== userId));
-      }
-    } catch (error) {
-      console.error('[FRIENDS] Block user error:', error);
-      showError('Failed to block user');
-      await fetchFriends();
-    }
-  };
-
-  const unblockUser = async (userId: string, displayName: string) => {
-    if (!user) return;
-
-    if (Platform.OS === 'web') {
-      if (!confirm(`Unblock ${displayName}?`)) return;
-    } else {
-      Alert.alert(
-        'Unblock User',
-        `Unblock ${displayName}? You'll be able to send friend requests to each other again.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Unblock',
-            onPress: async () => {
-              await performUnblockUser(userId, displayName);
-            },
-          },
-        ]
-      );
-      return;
-    }
-
-    await performUnblockUser(userId, displayName);
-  };
-
-  const performUnblockUser = async (userId: string, displayName: string) => {
-    if (!user) return;
-
-    try {
-      console.log('[FRIENDS] Unblocking user:', userId);
-
-      const { error } = await supabase.rpc('unblock_user', {
-        blocked_user_id: userId
-      });
-
-      if (error) {
-        console.error('[FRIENDS] Unblock error:', error);
-        showError('Failed to unblock user. Please try again.');
-      } else {
-        console.log('[FRIENDS] User unblocked successfully');
-        showSuccess(`${displayName} has been unblocked. You can now send friend requests.`);
-
-        // Clear any cached search results and reset search state
-        setSearchResults([]);
-        setSearchQuery('');
-        setSelectedUser(null);
-      }
-    } catch (error) {
-      console.error('[FRIENDS] Unblock user error:', error);
-      showError('Failed to unblock user');
-    }
-  };
-
   const renderFriend = ({ item }: { item: Friend }) => (
     <Pressable
       style={({ pressed }) => [
@@ -881,35 +720,6 @@ export default function FriendsScreen() {
         </Pressable>
       </LinearGradient>
     </Pressable>
-  );
-
-  const renderBlockedUser = ({ item }: { item: BlockedUser }) => (
-    <View style={styles.blockedCard}>
-      <View style={styles.friendInfo}>
-        <View style={styles.friendAvatar}>
-          {item.avatar_url ? (
-            <Image
-              source={{ uri: item.avatar_url }}
-              style={styles.avatarImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <Ban size={24} color="#64748B" />
-          )}
-        </View>
-        <View style={styles.friendDetails}>
-          <Text style={styles.friendName}>{item.display_name}</Text>
-          <Text style={styles.friendEmail}>@{item.username}</Text>
-        </View>
-      </View>
-      <Pressable
-        style={styles.unblockButton}
-        onPress={() => unblockUser(item.blocked_id, item.display_name)}
-      >
-        <Shield size={18} color="#10B981" />
-        <Text style={styles.unblockText}>Unblock</Text>
-      </Pressable>
-    </View>
   );
 
   const renderPendingRequest = ({ item }: { item: FriendRequest }) => (
@@ -1563,40 +1373,5 @@ const styles = StyleSheet.create({
   actionButtonPressed: {
     opacity: 0.6,
     transform: [{ scale: 0.92 }],
-  },
-  blockedCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  unblockButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#10B981',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  unblockText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '700',
   },
 });

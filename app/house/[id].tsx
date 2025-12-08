@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Plus, Users, Share2, Play, QrCode, Trash2, Settings, MoveVertical as MoreVertical, History, LogOut } from 'lucide-react-native';
+import { ArrowLeft, Plus, Users, Share2, Play, QrCode, Trash2, Settings, MoveVertical as MoreVertical, History, LogOut, Trophy, Medal, Target, Flame } from 'lucide-react-native';
 import BannerRenderer from '@/components/BannerRenderer';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,6 +44,18 @@ type Member = {
   role: string;
 };
 
+type LeaderboardStatType = 'most_wins' | 'best_accuracy' | 'winning_streak';
+
+type LeaderboardEntry = {
+  user_id: string;
+  username: string;
+  profile_photo_url: string | null;
+  equipped_kit_colors: string[] | null;
+  stat_value: number;
+  total_games: number;
+  additional_info: any;
+};
+
 export default function HouseDetailScreen() {
   const { id } = useLocalSearchParams();
   const queryClient = useQueryClient();
@@ -62,6 +74,9 @@ export default function HouseDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [selectedStatType, setSelectedStatType] = useState<LeaderboardStatType>('most_wins');
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const { user } = useAuth();
   const router = useRouter();
 
@@ -301,9 +316,16 @@ export default function HouseDetailScreen() {
     if (isRefreshing) setRefreshing(false);
   };
 
+  useEffect(() => {
+    if (id && selectedStatType) {
+      fetchLeaderboardStats(selectedStatType);
+    }
+  }, [id, selectedStatType]);
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchHouseData(true);
+    fetchLeaderboardStats(selectedStatType);
   };
 
   const fetchPendingInvitations = async () => {
@@ -521,6 +543,32 @@ export default function HouseDetailScreen() {
       console.log('[HOUSE DETAIL] Game sessions loaded:', sessionsWithStats);
     } catch (error) {
       console.error('[HOUSE DETAIL] Error fetching game sessions:', error);
+    }
+  };
+
+  const fetchLeaderboardStats = async (statType: LeaderboardStatType = 'most_wins') => {
+    if (!id) return;
+
+    setLoadingLeaderboard(true);
+    try {
+      const { data, error } = await supabase.rpc('get_house_leaderboard_stats', {
+        house_id_param: id,
+        stat_type: statType,
+        limit_count: 10
+      });
+
+      if (error) {
+        console.error('[HOUSE DETAIL] Error fetching leaderboard stats:', error);
+        setLeaderboardData([]);
+        return;
+      }
+
+      setLeaderboardData(data || []);
+    } catch (error) {
+      console.error('[HOUSE DETAIL] Exception fetching leaderboard stats:', error);
+      setLeaderboardData([]);
+    } finally {
+      setLoadingLeaderboard(false);
     }
   };
 
@@ -1107,6 +1155,52 @@ export default function HouseDetailScreen() {
     );
   };
 
+  const renderLeaderboardEntry = ({ item, index }: { item: LeaderboardEntry; index: number }) => {
+    const getRankIcon = () => {
+      if (index === 0) return { color: '#FFD700', filled: true };
+      if (index === 1) return { color: '#C0C0C0', filled: true };
+      if (index === 2) return { color: '#CD7F32', filled: true };
+      return null;
+    };
+
+    const rankIcon = getRankIcon();
+
+    return (
+      <Pressable
+        style={styles.leaderboardEntryCard}
+        onPress={() => router.push(`/player-stats/${item.user_id}`)}
+      >
+        <View style={styles.leaderboardLeft}>
+          <View style={styles.leaderboardRank}>
+            {rankIcon ? (
+              <Medal size={20} color={rankIcon.color} fill={rankIcon.filled ? rankIcon.color : 'none'} />
+            ) : (
+              <Text style={styles.rankNumber}>#{index + 1}</Text>
+            )}
+          </View>
+          <View style={styles.leaderboardAvatar}>
+            {item.profile_photo_url ? (
+              <Text style={styles.leaderboardAvatarImage}>
+                {item.username.charAt(0).toUpperCase()}
+              </Text>
+            ) : (
+              <Text style={styles.leaderboardAvatarText}>
+                {item.username.charAt(0).toUpperCase()}
+              </Text>
+            )}
+          </View>
+          <Text style={styles.leaderboardUsername}>{item.username}</Text>
+        </View>
+        <View style={styles.leaderboardRight}>
+          <Text style={styles.leaderboardStatValue}>
+            {selectedStatType === 'best_accuracy' ? `${item.stat_value.toFixed(1)}%` : item.stat_value.toFixed(0)}
+          </Text>
+          <Text style={styles.leaderboardGamesCount}>{item.total_games} games</Text>
+        </View>
+      </Pressable>
+    );
+  };
+
   const renderGame = ({ item }: { item: Game }) => (
     <Pressable
       style={styles.gameCard}
@@ -1276,6 +1370,61 @@ export default function HouseDetailScreen() {
             contentContainerStyle={styles.gamesList}
             scrollEnabled={false}
           />
+        </View>
+      )}
+
+      {leaderboardData.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Trophy size={24} color="#F59E0B" />
+            <Text style={[styles.sectionTitle, { color: dynamicTextColor, marginLeft: 8 }]}>House Leaders</Text>
+          </View>
+
+          <View style={styles.leaderboardFilters}>
+            <Pressable
+              style={[styles.filterTab, selectedStatType === 'most_wins' && styles.filterTabActive]}
+              onPress={() => setSelectedStatType('most_wins')}
+            >
+              <Trophy size={16} color={selectedStatType === 'most_wins' ? '#FFFFFF' : '#94A3B8'} />
+              <Text style={[styles.filterTabText, selectedStatType === 'most_wins' && styles.filterTabTextActive]}>
+                Most Wins
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.filterTab, selectedStatType === 'best_accuracy' && styles.filterTabActive]}
+              onPress={() => setSelectedStatType('best_accuracy')}
+            >
+              <Target size={16} color={selectedStatType === 'best_accuracy' ? '#FFFFFF' : '#94A3B8'} />
+              <Text style={[styles.filterTabText, selectedStatType === 'best_accuracy' && styles.filterTabTextActive]}>
+                Best Accuracy
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.filterTab, selectedStatType === 'winning_streak' && styles.filterTabActive]}
+              onPress={() => setSelectedStatType('winning_streak')}
+            >
+              <Flame size={16} color={selectedStatType === 'winning_streak' ? '#FFFFFF' : '#94A3B8'} />
+              <Text style={[styles.filterTabText, selectedStatType === 'winning_streak' && styles.filterTabTextActive]}>
+                Streak
+              </Text>
+            </Pressable>
+          </View>
+
+          {loadingLeaderboard ? (
+            <View style={styles.leaderboardLoading}>
+              <ActivityIndicator size="small" color="#10B981" />
+            </View>
+          ) : (
+            <FlatList
+              data={leaderboardData}
+              renderItem={renderLeaderboardEntry}
+              keyExtractor={(item) => item.user_id}
+              contentContainerStyle={styles.leaderboardList}
+              scrollEnabled={false}
+            />
+          )}
         </View>
       )}
 
@@ -1672,5 +1821,106 @@ const styles = StyleSheet.create({
   },
   statusDeclined: {
     backgroundColor: '#EF4444',
+  },
+  leaderboardFilters: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  filterTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  filterTabActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#059669',
+  },
+  filterTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  filterTabTextActive: {
+    color: '#FFFFFF',
+  },
+  leaderboardLoading: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leaderboardList: {
+    gap: 10,
+  },
+  leaderboardEntryCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  leaderboardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  leaderboardRank: {
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankNumber: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#64748B',
+  },
+  leaderboardAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#475569',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  leaderboardAvatarImage: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  leaderboardAvatarText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  leaderboardUsername: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  leaderboardRight: {
+    alignItems: 'flex-end',
+  },
+  leaderboardStatValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#10B981',
+    marginBottom: 2,
+  },
+  leaderboardGamesCount: {
+    fontSize: 11,
+    color: '#94A3B8',
   },
 });
