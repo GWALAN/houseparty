@@ -269,12 +269,143 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       )
       .subscribe();
 
+    // Listen for game invitation acceptances (notify the inviter)
+    const invitationAcceptanceChannel = supabase
+      .channel(`invitation-acceptance-notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'game_invitations',
+          filter: `inviter_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          console.log('[Notifications] Game invitation updated:', payload);
+
+          // Only notify if status changed to accepted
+          if (payload.new.status === 'accepted' && payload.old.status === 'pending') {
+            // Fetch invitee, house, and game info
+            const [inviteeResult, houseResult, gameResult] = await Promise.all([
+              supabase
+                .from('profiles')
+                .select('username')
+                .eq('id', payload.new.invitee_id)
+                .maybeSingle(),
+              supabase
+                .from('houses')
+                .select('name')
+                .eq('id', payload.new.house_id)
+                .maybeSingle(),
+              supabase
+                .from('games')
+                .select('name')
+                .eq('id', payload.new.game_id)
+                .maybeSingle()
+            ]);
+
+            const inviteeName = inviteeResult.data?.username || 'Someone';
+            const houseName = houseResult.data?.name || 'a house';
+            const gameName = gameResult.data?.name || 'a game';
+
+            // Show in-app notification
+            showSuccess(`${inviteeName} accepted your invitation to play ${gameName}!`, 5000);
+
+            // Send push notification (only on native)
+            await sendPushNotification(
+              'Invitation Accepted',
+              `${inviteeName} has joined your game of ${gameName} in ${houseName}!`,
+              {
+                type: 'invitation_accepted',
+                inviteeId: payload.new.invitee_id,
+                gameSessionId: payload.new.game_session_id,
+                houseId: payload.new.house_id
+              }
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    // Listen for game completions (notify all participants)
+    const gameCompletionChannel = supabase
+      .channel(`game-completion-notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'game_sessions',
+        },
+        async (payload) => {
+          console.log('[Notifications] Game session updated:', payload);
+
+          // Only notify if status changed to completed
+          if (payload.new.status === 'completed' && payload.old.status !== 'completed') {
+            // Check if user was a participant in this game
+            const { data: userScore } = await supabase
+              .from('session_scores')
+              .select('user_id, is_winner, placement')
+              .eq('session_id', payload.new.id)
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            // Only notify if user was a participant and they didn't complete the game themselves
+            if (userScore && payload.new.created_by !== user.id) {
+              // Fetch game and house info
+              const [gameResult, houseResult] = await Promise.all([
+                supabase
+                  .from('games')
+                  .select('name')
+                  .eq('id', payload.new.game_id)
+                  .maybeSingle(),
+                supabase
+                  .from('houses')
+                  .select('name')
+                  .eq('id', payload.new.house_id)
+                  .maybeSingle()
+              ]);
+
+              const gameName = gameResult.data?.name || 'A game';
+              const houseName = houseResult.data?.name || 'your house';
+
+              // Create notification message based on result
+              let message = `${gameName} in ${houseName} has ended`;
+              if (userScore.is_winner) {
+                message += ' - You won!';
+              } else if (userScore.placement) {
+                message += ` - You placed #${userScore.placement}`;
+              }
+
+              // Show in-app notification
+              showInfo(message, 7000);
+
+              // Send push notification (only on native)
+              await sendPushNotification(
+                'Game Completed',
+                message,
+                {
+                  type: 'game_completed',
+                  gameSessionId: payload.new.id,
+                  houseId: payload.new.house_id,
+                  isWinner: userScore.is_winner,
+                  placement: userScore.placement
+                }
+              );
+            }
+          }
+        }
+      )
+      .subscribe();
+
     // Clean up subscriptions
     return () => {
       console.log('[Notifications] Cleaning up notification listeners');
       supabase.removeChannel(friendRequestChannel);
       supabase.removeChannel(friendshipChannel);
       supabase.removeChannel(gameInvitationChannel);
+      supabase.removeChannel(invitationAcceptanceChannel);
+      supabase.removeChannel(gameCompletionChannel);
     };
   }, [user, showInfo, showSuccess, sendPushNotification]);
 
@@ -292,6 +423,22 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         router.push('/(tabs)/friends');
       } else if (data.type === 'game_invite') {
         router.push('/(tabs)/friends');
+      } else if (data.type === 'invitation_accepted') {
+        // Navigate to the game session if available
+        if (data.gameSessionId) {
+          router.push(`/game-session/${data.gameSessionId}?existingSessionId=${data.gameSessionId}`);
+        } else if (data.houseId) {
+          router.push(`/house/${data.houseId}`);
+        } else {
+          router.push('/(tabs)');
+        }
+      } else if (data.type === 'game_completed') {
+        // Navigate to the house to see game history
+        if (data.houseId) {
+          router.push(`/house/${data.houseId}`);
+        } else {
+          router.push('/(tabs)');
+        }
       }
     });
 

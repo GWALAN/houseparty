@@ -4,6 +4,8 @@ type NotificationType =
   | 'game_invite'
   | 'friend_request'
   | 'friend_accepted'
+  | 'invitation_accepted'
+  | 'game_completed'
   | 'game_session_started'
   | 'badge_unlocked'
   | 'house_joined'
