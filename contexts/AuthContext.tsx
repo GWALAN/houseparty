@@ -13,6 +13,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
+  resendVerificationEmail: (email: string) => Promise<{ error: any }>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => ({ error: null }),
   signOut: async () => {},
   resetPassword: async () => ({ error: null }),
+  resendVerificationEmail: async () => ({ error: null }),
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -158,6 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: {
           username: username,
         },
+        emailRedirectTo: 'houseparty://auth-redirect',
       },
     });
 
@@ -308,8 +311,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
+  const resendVerificationEmail = async (email: string) => {
+    console.log('[AUTH] Resend verification email:', email);
+
+    logger.event(EventType.AUTH, 'resend_verification', {
+      status: EventStatus.START,
+      metadata: { email },
+    });
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: 'houseparty://auth-redirect',
+      },
+    });
+
+    if (error) {
+      console.error('[AUTH] Resend verification error:', error);
+
+      logger.event(EventType.AUTH, 'resend_verification', {
+        status: EventStatus.FAIL,
+        metadata: {
+          error: error.message,
+          email,
+        },
+      });
+    } else {
+      console.log('[AUTH] Verification email resent successfully');
+
+      logger.event(EventType.AUTH, 'resend_verification', {
+        status: EventStatus.SUCCESS,
+        metadata: { email },
+      });
+    }
+
+    return { error };
+  };
+
   return (
-    <AuthContext.Provider value={{ session, user, loading, signUp, signIn, signOut, resetPassword }}>
+    <AuthContext.Provider value={{ session, user, loading, signUp, signIn, signOut, resetPassword, resendVerificationEmail }}>
       {children}
     </AuthContext.Provider>
   );

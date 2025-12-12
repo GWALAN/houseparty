@@ -11,7 +11,8 @@ export type DeepLinkType =
   | { type: 'game_session'; sessionId: string }
   | { type: 'paypal_success'; token?: string; orderId?: string; kitId?: string }
   | { type: 'paypal_cancel' }
-  | { type: 'password_reset'; access_token?: string; refresh_token?: string; recovery_type?: string };
+  | { type: 'password_reset'; access_token?: string; refresh_token?: string; recovery_type?: string }
+  | { type: 'email_confirmation'; access_token?: string; refresh_token?: string };
 
 class DeepLinkingService {
   generateHouseInviteLink(houseId: string, inviteCode?: string): string {
@@ -84,10 +85,10 @@ class DeepLinkingService {
         }
       }
 
-      if (hostname === 'reset-password' || path === '/reset-password') {
-        console.log('[DeepLink] Password reset detected, parsing hash fragment');
+      if (hostname === 'reset-password' || path === '/reset-password' || hostname === 'auth-redirect' || path === '/auth-redirect') {
+        console.log('[DeepLink] Auth redirect detected, parsing hash fragment');
 
-        // Supabase sends tokens in hash fragment (#access_token=...&refresh_token=...)
+        // Supabase sends tokens in hash fragment (#access_token=...&refresh_token=...&type=...)
         // Linking.parse() doesn't extract hash, so we need to parse it manually
         const hashIndex = url.indexOf('#');
         const hashParams: Record<string, string> = {};
@@ -102,12 +103,27 @@ class DeepLinkingService {
           console.log('[DeepLink] Parsed hash params:', hashParams);
         }
 
-        return {
-          type: 'password_reset',
-          access_token: hashParams.access_token || (queryParams?.access_token as string),
-          refresh_token: hashParams.refresh_token || (queryParams?.refresh_token as string),
-          recovery_type: hashParams.type || (queryParams?.type as string),
-        };
+        const authType = hashParams.type || (queryParams?.type as string);
+        const access_token = hashParams.access_token || (queryParams?.access_token as string);
+        const refresh_token = hashParams.refresh_token || (queryParams?.refresh_token as string);
+
+        // Check if this is email confirmation (type=signup) or password reset (type=recovery)
+        if (authType === 'signup') {
+          console.log('[DeepLink] Email confirmation detected');
+          return {
+            type: 'email_confirmation',
+            access_token,
+            refresh_token,
+          };
+        } else {
+          console.log('[DeepLink] Password reset detected');
+          return {
+            type: 'password_reset',
+            access_token,
+            refresh_token,
+            recovery_type: authType,
+          };
+        }
       }
 
       return null;
@@ -160,6 +176,17 @@ class DeepLinkingService {
 
         console.log('[DeepLink] Navigating to reset-password with params:', resetParams.toString().substring(0, 100) + '...');
         router.push(`/(auth)/reset-password?${resetParams.toString()}` as any);
+        break;
+
+      case 'email_confirmation':
+        // Email confirmation - pass tokens to auth-redirect screen
+        const confirmParams = new URLSearchParams();
+        if (deepLink.access_token) confirmParams.append('access_token', deepLink.access_token);
+        if (deepLink.refresh_token) confirmParams.append('refresh_token', deepLink.refresh_token);
+        confirmParams.append('type', 'signup');
+
+        console.log('[DeepLink] Navigating to auth-redirect for email confirmation');
+        router.push(`/auth-redirect?${confirmParams.toString()}` as any);
         break;
     }
   }

@@ -49,7 +49,25 @@ export default function AuthRedirectScreen() {
         return;
       }
 
-      if (type === 'recovery') {
+      if (type === 'signup') {
+        console.log('[AUTH_REDIRECT] Processing email confirmation');
+
+        // Set the session to confirm the user's email
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+
+        if (error) {
+          console.error('[AUTH_REDIRECT] Error confirming email:', error);
+          router.replace('/(auth)/signin');
+          return;
+        }
+
+        console.log('[AUTH_REDIRECT] Email confirmed successfully, redirecting to app');
+        // Redirect to home which will check onboarding status
+        router.replace('/');
+      } else if (type === 'recovery') {
         console.log('[AUTH_REDIRECT] Processing password recovery');
 
         // Store tokens for manual button

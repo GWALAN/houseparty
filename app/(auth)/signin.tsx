@@ -44,7 +44,14 @@ export default function SignInScreen() {
     setLoading(false);
 
     if (error) {
-      setError(error.message);
+      // Check if the error is related to email not being confirmed
+      if (error.message.includes('Email not confirmed') ||
+          error.message.includes('email_not_confirmed') ||
+          error.message.includes('not verified')) {
+        setError('Please verify your email address before signing in. Check your inbox for the verification link.');
+      } else {
+        setError(error.message);
+      }
       return;
     }
 

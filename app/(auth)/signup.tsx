@@ -77,24 +77,12 @@ export default function SignUpScreen() {
         setError(`Unable to create account: ${error.message}`);
       }
     } else {
-      console.log('[SIGNUP] Account created successfully!');
-      // Auto-signin after successful signup
-      console.log('[SIGNUP] Attempting auto-signin...');
-      const { error: signInError } = await signIn(email, password);
-
-      if (signInError) {
-        console.error('[SIGNUP] Auto-signin failed:', signInError);
-        setError('Account created but auto-signin failed. Please sign in manually.');
-        setLoading(false);
-      } else {
-        console.log('[SIGNUP] Auto-signin successful, waiting for auth state to update');
-        // Give the auth state a moment to update, then redirect
-        setTimeout(() => {
-          console.log('[SIGNUP] Redirecting to check onboarding status');
-          router.replace('/');
-          setLoading(false);
-        }, 1000);
-      }
+      console.log('[SIGNUP] Account created successfully! Redirecting to email verification...');
+      // Redirect to verify-email screen
+      router.replace({
+        pathname: '/(auth)/verify-email',
+        params: { email }
+      });
     }
   };
 
